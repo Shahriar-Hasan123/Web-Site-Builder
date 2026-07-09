@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "core",
     "sites",
     "pages",
+    "sections",
 ]
 
 MIDDLEWARE = [
