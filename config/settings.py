@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "core",
     "sites",
+    "pages",
 ]
 
 MIDDLEWARE = [
