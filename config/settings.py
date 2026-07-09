@@ -47,6 +47,8 @@ INSTALLED_APPS = [
     "sites",
     "pages",
     "sections",
+    "headers",
+    "footers",
 ]
 
 MIDDLEWARE = [
