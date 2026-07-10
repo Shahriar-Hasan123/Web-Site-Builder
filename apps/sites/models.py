@@ -1,14 +1,20 @@
 from core.models import BaseModel
+from core.validators import css_file_validator, validate_file_size
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
-
 
 class Site(BaseModel):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sites")
     name = models.CharField(max_length=40)
     subdomain = models.SlugField(unique=True, blank=True)
     is_published = models.BooleanField(default=False)
+    global_css = models.FileField(
+        upload_to="sites/css",
+        validators=[css_file_validator, validate_file_size],
+        blank=True,
+        null=True,
+    )
 
     def save(self, *args, **kwargs):
         if not self.subdomain:

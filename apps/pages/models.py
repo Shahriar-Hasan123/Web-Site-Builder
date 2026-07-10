@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.text import slugify
 from core.models import BaseModel
 from sites.models import Site
+from core.validators import css_file_validator, validate_file_size
 
 STATUS_CHOICES = [("draft", "Draft"), ("published", "Published")]
 
@@ -11,10 +12,16 @@ class Page(BaseModel):
     title = models.CharField(max_length=255)
     slug = models.SlugField(blank=True)
     is_homepage = models.BooleanField(default=False)
-
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
     seo_meta = models.JSONField(default=dict, blank=True)
     order = models.PositiveIntegerField(default=0)
+
+    custom_css = models.FileField(
+        upload_to="pages/css/",
+        validators=[css_file_validator, validate_file_size],
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         unique_together = ("site", "slug")
