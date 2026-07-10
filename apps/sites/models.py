@@ -1,34 +1,55 @@
-from core.models import BaseModel
-from core.validators import css_file_validator, validate_file_size
+from django.conf import settings
 from django.db import models
-from django.contrib.auth.models import User
-from django.utils.text import slugify
+
+from apps.core.models import BaseModel
+from apps.core.validators import validate_file_size, css_file_validator
+
 
 class Site(BaseModel):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sites")
-    name = models.CharField(max_length=40)
-    subdomain = models.SlugField(unique=True, blank=True)
-    is_published = models.BooleanField(default=False)
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+        SUSPENDED = "suspended", "Suspended"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sites",
+    )
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(unique=True, db_index=True)
+    domain = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    is_domain_verified = models.BooleanField(default=False)
+
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
+
+    favicon = models.ImageField(
+        upload_to="sites/favicons/",
+        validators=[validate_file_size],
+        blank=True,
+        null=True,
+    )
+    logo = models.ImageField(
+        upload_to="sites/logos/",
+        validators=[validate_file_size],
+        blank=True,
+        null=True,
+    )
     global_css = models.FileField(
-        upload_to="sites/css",
+        upload_to="sites/css/",
         validators=[css_file_validator, validate_file_size],
         blank=True,
         null=True,
     )
 
-    def save(self, *args, **kwargs):
-        if not self.subdomain:
-            self.subdomain = self._generate_unique_subdomain()
-        super().save(*args, **kwargs)
-
-    def _generate_unique_subdomain(self):
-        base_slug = slugify(self.name)
-        slug = base_slug
-        counter = 1
-        while Site.objects.filter(subdomain=slug).exclude(pk=self.pk).exists():
-            slug = f"{base_slug}-{counter}"
-            counter += 1
-        return slug
+    class Meta:
+        verbose_name = "Site"
+        verbose_name_plural = "Sites"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return self.name

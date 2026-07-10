@@ -1,49 +1,83 @@
+from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
-from core.models import BaseModel
-from sites.models import Site
-from core.validators import css_file_validator, validate_file_size
 
-STATUS_CHOICES = [("draft", "Draft"), ("published", "Published")]
+from apps.core.models import BaseModel
+from apps.core.validators import html_file_validator, css_file_validator, validate_file_size
+from apps.sites.models import Site
 
 
 class Page(BaseModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+
+    class PageType(models.TextChoices):
+        STANDARD = "standard", "Standard"
+        LANDING = "landing", "Landing Page"
+        BLOG = "blog", "Blog"
+
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="pages")
+
     title = models.CharField(max_length=255)
     slug = models.SlugField(blank=True)
-    is_homepage = models.BooleanField(default=False)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
-    seo_meta = models.JSONField(default=dict, blank=True)
-    order = models.PositiveIntegerField(default=0)
+    meta_description = models.CharField(max_length=300, blank=True)
 
-    custom_css = models.FileField(
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    page_type = models.CharField(max_length=20, choices=PageType.choices, default=PageType.STANDARD)
+    enable = models.BooleanField(default=True)
+
+    canonical_url = models.URLField(blank=True, null=True)
+
+    html = models.FileField(
+        upload_to="pages/html/",
+        validators=[html_file_validator, validate_file_size],
+        blank=True,
+        null=True,
+    )
+    css = models.FileField(
         upload_to="pages/css/",
         validators=[css_file_validator, validate_file_size],
         blank=True,
         null=True,
     )
 
-    class Meta:
-        unique_together = ("site", "slug")
-        ordering = ["order"]
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pages_created",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pages_updated",
+    )
 
-    def save(self, *args, **kwargs):
+    class Meta:
+        verbose_name = "Page"
+        verbose_name_plural = "Pages"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["site", "slug"], name="unique_slug_per_site"),
+        ]
+
+    def save(self, user=None, *args, **kwargs):
         if not self.slug:
-            self.slug = self._generate_unique_slug()
-        if self.seo_meta is None:
-            self.seo_meta = {}
+            self.slug = slugify(self.title)
+        
+        # Set created_by on initial creation
+        if not self.pk and user:
+            self.created_by = user
+        
+        # Always update updated_by if user is provided
+        if user:
+            self.updated_by = user
+        
         super().save(*args, **kwargs)
 
-    def _generate_unique_slug(self):
-        base_slug = slugify(self.title)
-        slug = base_slug
-        counter = 1
-        while (
-            Page.objects.filter(site=self.site, slug=slug).exclude(pk=self.pk).exists()
-        ):
-            slug = f"{base_slug}-{counter}"
-            counter += 1
-        return slug
-
     def __str__(self):
-        return f"{self.site.name} - {self.title}"
+        return f"{self.title} ({self.site.name})"

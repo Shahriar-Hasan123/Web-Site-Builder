@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
-import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -19,9 +18,6 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
-
-# Allow direct imports from the project apps directory.
-sys.path.insert(0, str(BASE_DIR / "apps"))
 
 
 # Quick-start development settings - unsuitable for production
@@ -52,12 +48,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_nested",
     "corsheaders",
-    "core",
-    "sites",
-    "pages",
-    "sections",
-    "headers",
-    "footers",
+    "apps.core",
+    "apps.sites",
+    "apps.pages",
 ]
 
 MIDDLEWARE = [
